@@ -1,0 +1,16 @@
+{
+  "name": "git-notes",
+  "version": "1.0.0",
+  "description": "Read GitHub markdown notes on your Amazfit smartwatch",
+  "main": "app.js",
+  "scripts": {
+    "build": "zeus build",
+    "preview": "zeus preview"
+  },
+  "dependencies": {
+    "@zeppos/zeus-cli": "^1.3.0-beta.9"
+  },
+  "devDependencies": {
+    "zeppos-device-types-v1": "^1.0.9"
+  }
+}
