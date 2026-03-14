@@ -1,0 +1,7 @@
+{
+  "env": {
+    "ZEPP_DOCS": "../zeppos-docs",
+    "ZEPP_SAMPLES": "../zeppos-samples",
+    "ZEPP_TASKS_REF": "../ZeppOS-Tasks"
+  }
+}
