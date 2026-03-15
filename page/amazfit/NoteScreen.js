@@ -2,19 +2,26 @@
  * NoteScreen — reads and displays a markdown note from watch storage.
  *
  * Params (JSON string): { path: "folder/note.md" }
+ *   path = "__mock__" renders the built-in demo note for renderer testing.
  *
  * Notes are stored as text files on the watch after sync.
  * Falls back to fetching from phone (via message) if not cached locally.
  */
 
-import { parseMarkdown, toPlainText } from '../../lib/markdown'
+import { parseMarkdown } from '../../lib/markdown'
 
 const { messageBuilder, config } = getApp()._options.globalData
 
-const SCREEN_WIDTH = hmSetting.getDeviceInfo().width || 480
-const SCREEN_HEIGHT = hmSetting.getDeviceInfo().height || 480
-const MARGIN = 16
-const FONT_SIZE = 18
+const _dev = hmSetting.getDeviceInfo()
+const SCREEN_WIDTH = _dev.width || 480
+const SCREEN_HEIGHT = _dev.height || 480
+// Circular displays (Balance 480×480, Active ~390×450) need a wider margin so
+// content stays inside the round bezel at all scroll positions.
+const IS_CIRCULAR = SCREEN_WIDTH >= SCREEN_HEIGHT * 0.75
+const MARGIN = IS_CIRCULAR ? 48 : 16
+const CONTENT_START_Y = IS_CIRCULAR ? 72 : 8
+const CONTENT_BOTTOM_PAD = IS_CIRCULAR ? 160 : 48
+const FONT_SIZE = 20
 const LINE_HEIGHT = FONT_SIZE + 8
 const TEXT_COLOR = 0xC9D1D9
 const DIM_COLOR = 0x8B949E
@@ -22,6 +29,49 @@ const BG_COLOR = 0x0D1117
 const HEADING_COLOR = 0x58A6FF
 const QUOTE_COLOR = 0x8B949E
 const BULLET_COLOR = 0xE3B341
+const CODE_BG = 0x161B22
+const CODE_COLOR = 0x8B949E
+const TABLE_HEADER_COLOR = 0x79C0FF
+
+const MOCK_MD = `# Git Notes Demo
+
+This is a long paragraph to verify that text wrapping works correctly on the narrow watch screen. It should wrap across multiple lines without scrolling sideways.
+
+## Getting Started
+
+Configure the app using the **Zepp** companion app on your phone. Then tap Sync to download your notes.
+
+### Supported Formats
+
+Inline \`code\`, **bold text**, and [link text](https://example.com) are all stripped to plain text for display.
+
+- Unordered list item one
+- Second item with more text
+  - Nested item (level 2)
+  - Another nested item
+
+1. First ordered step
+2. Second ordered step
+3. Third ordered step
+
+> This is a blockquote. It appears in grey with a leading pipe character.
+
+## Table Example
+
+| Format | Supported |
+|--------|-----------|
+| Bold   | Yes       |
+| Tables | Yes       |
+| Images | No        |
+
+---
+
+\`\`\`
+function hello(name) {
+  return "Hello, " + name
+}
+\`\`\`
+`
 
 class NoteScreen {
   constructor(paramsStr) {
@@ -40,6 +90,12 @@ class NoteScreen {
     hmUI.updateStatusBarTitle(name || 'Note')
     hmApp.setScreenKeep(true)
 
+    // Mock mode — render built-in demo note
+    if (!this.filePath || this.filePath === '__mock__') {
+      this._render(MOCK_MD)
+      return
+    }
+
     // Try local storage first
     const content = this._readLocal(this.filePath)
     if (content !== null) {
@@ -53,24 +109,22 @@ class NoteScreen {
       action: 'get_file',
       path: this.filePath,
     }, {}).then((resp) => {
-      this._clearWidgets()
       if (resp.error) {
         this._showError(resp.error)
       } else {
-        // Cache locally for next time
         this._writeLocal(this.filePath, resp.content)
-        this._render(resp.content)
+        hmApp.reloadPage({
+          url: 'page/amazfit/NoteScreen',
+          param: JSON.stringify({ path: this.filePath }),
+        })
       }
     }).catch((err) => {
-      this._clearWidgets()
       this._showError(String(err))
     })
   }
 
   _render(content) {
-    const parsed = parseMarkdown(content)
-    const text = toPlainText(parsed)
-    const lines = parsed
+    const lines = parseMarkdown(content)
 
     hmUI.setLayerScrolling(true)
 
@@ -81,13 +135,13 @@ class NoteScreen {
       color: BG_COLOR,
     })
 
-    this.posY = 8
+    this.posY = CONTENT_START_Y
 
     for (const line of lines) {
       this._addLine(line)
     }
 
-    this.posY += 48
+    this.posY += CONTENT_BOTTOM_PAD
   }
 
   _addLine(line) {
@@ -97,17 +151,40 @@ class NoteScreen {
     }
 
     let color = TEXT_COLOR
-    if (line.bold) color = HEADING_COLOR
-    else if (line.indent) color = (line.text.startsWith('|') ? QUOTE_COLOR : TEXT_COLOR)
+    if (line.bold) {
+      color = HEADING_COLOR
+    } else if (line.table && line.header) {
+      color = TABLE_HEADER_COLOR
+    } else if (line.code) {
+      color = CODE_COLOR
+    } else if (line.text.startsWith('|')) {
+      color = QUOTE_COLOR
+    } else if (line.indent && !line.text.startsWith('|') && !line.code) {
+      color = BULLET_COLOR
+    }
 
-    const effectiveFontSize = line.bold ? FONT_SIZE + 2 : FONT_SIZE
+    let effectiveFontSize = FONT_SIZE
+    if (line.bold) {
+      if (line.level === 1) effectiveFontSize = 24
+      else if (line.level === 2) effectiveFontSize = 22
+      else effectiveFontSize = 20
+    }
+
     const x = MARGIN + (line.indent || 0) * 12
     const w = SCREEN_WIDTH - x - MARGIN
 
-    // Estimate lines needed based on character count
     const charsPerLine = Math.floor(w / (effectiveFontSize * 0.6)) || 20
-    const wrappedLines = Math.ceil(line.text.length / charsPerLine) || 1
+    const wrappedLines = Math.ceil(line.text.length / charsPerLine) + 1
     const h = wrappedLines * (effectiveFontSize + 8) + 4
+
+    // Code block: draw background rect behind text
+    if (line.code) {
+      hmUI.createWidget(hmUI.widget.FILL_RECT, {
+        x, y: this.posY,
+        w, h,
+        color: CODE_BG,
+      })
+    }
 
     hmUI.createWidget(hmUI.widget.TEXT, {
       x, y: this.posY,
@@ -116,12 +193,11 @@ class NoteScreen {
       text_size: effectiveFontSize,
       color,
       align_h: hmUI.align.LEFT,
-      text_style: hmUI.text_style.NONE,
+      text_style: line.bold ? hmUI.text_style.ELLIPSIS : hmUI.text_style.WRAP,
     })
 
     this.posY += h
   }
-
 
   _showLoading() {
     const cy = Math.floor(SCREEN_HEIGHT / 2)
@@ -135,11 +211,6 @@ class NoteScreen {
     })
   }
 
-  _clearWidgets() {
-    // Reload page to clear all widgets
-    // (ZeppOS v1 doesn't have a bulk widget removal API)
-  }
-
   _showError(msg) {
     const cy = Math.floor(SCREEN_HEIGHT / 2)
     hmUI.createWidget(hmUI.widget.TEXT, {
@@ -149,7 +220,7 @@ class NoteScreen {
       text_size: 16,
       color: 0xF85149,
       align_h: hmUI.align.CENTER_H,
-      text_style: hmUI.text_style.NONE,
+      text_style: hmUI.text_style.WRAP,
     })
   }
 
@@ -196,25 +267,6 @@ class NoteScreen {
     } catch (e) {
       // non-fatal
     }
-  }
-}
-
-// ─── Storage helpers exposed for SyncScreen ──────────────────────────────────
-
-export function writeNoteFile(filePath, content) {
-  const fname = 'note_' + filePath.replace(/[/\s]/g, '_') + '.txt'
-  try {
-    const ab = new ArrayBuffer(content.length * 2)
-    const view = new Uint16Array(ab)
-    for (let i = 0; i < content.length; i++) view[i] = content.charCodeAt(i)
-
-    const fd = hmFS.open(fname, hmFS.O_CREAT | hmFS.O_RDWR | hmFS.O_TRUNC)
-    hmFS.seek(fd, 0, hmFS.SEEK_SET)
-    hmFS.write(fd, ab, 0, ab.byteLength)
-    hmFS.close(fd)
-    return true
-  } catch (e) {
-    return false
   }
 }
 

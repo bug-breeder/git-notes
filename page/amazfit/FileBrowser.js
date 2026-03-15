@@ -296,6 +296,34 @@ class FileBrowser {
     tap.addEventListener(hmUI.event.CLICK_UP, () => {
       hmApp.gotoPage({ url: 'page/amazfit/SyncScreen' })
     })
+
+    // Demo Note button — opens mock renderer for display testing
+    const dY = bY + bH + 16
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: bMargin, y: dY,
+      w: SCREEN_WIDTH - bMargin * 2, h: bH,
+      color: 0x21262D,
+      radius: 10,
+    })
+    hmUI.createWidget(hmUI.widget.TEXT, {
+      x: bMargin, y: dY + (bH - FONT_SIZE) / 2,
+      w: SCREEN_WIDTH - bMargin * 2, h: FONT_SIZE + 4,
+      text: 'Demo Note',
+      text_size: FONT_SIZE,
+      color: DIM_COLOR,
+      align_h: hmUI.align.CENTER_H,
+    })
+    const demoTap = hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: bMargin, y: dY,
+      w: SCREEN_WIDTH - bMargin * 2, h: bH,
+      color: 0x00000000, alpha: 0,
+    })
+    demoTap.addEventListener(hmUI.event.CLICK_UP, () => {
+      hmApp.gotoPage({
+        url: 'page/amazfit/NoteScreen',
+        param: JSON.stringify({ path: '__mock__' }),
+      })
+    })
   }
 }
 

@@ -9,7 +9,7 @@
  *  5. Show progress and completion status
  */
 
-import { writeNoteFile } from './NoteScreen'
+import { writeNoteFile } from '../../lib/noteStorage'
 
 const { messageBuilder, config } = getApp()._options.globalData
 
