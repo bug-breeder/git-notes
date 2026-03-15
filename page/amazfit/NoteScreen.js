@@ -174,7 +174,7 @@ class NoteScreen {
     const w = SCREEN_WIDTH - x - MARGIN
 
     const charsPerLine = Math.floor(w / (effectiveFontSize * 0.6)) || 20
-    const wrappedLines = Math.ceil(line.text.length / charsPerLine) + 1
+    const wrappedLines = Math.ceil(line.text.length / charsPerLine) || 1
     const h = wrappedLines * (effectiveFontSize + 8) + 4
 
     // Code block: draw background rect behind text
@@ -193,7 +193,7 @@ class NoteScreen {
       text_size: effectiveFontSize,
       color,
       align_h: hmUI.align.LEFT,
-      text_style: line.bold ? hmUI.text_style.ELLIPSIS : hmUI.text_style.WRAP,
+      text_style: hmUI.text_style.WRAP,
     })
 
     this.posY += h
