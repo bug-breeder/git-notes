@@ -1,38 +1,165 @@
-import { gettext as t } from 'i18n'
+// ─── Styles (must be declared before AppSettingsPage so the bundler places
+//     const before the AppSettingsPage() call, avoiding TDZ crashes) ──────────
+
+const styles = {
+  header: {
+    padding: '20px 16px 12px',
+    background: '#161b22',
+    borderBottom: '1px solid #30363d',
+  },
+  appTitle: {
+    fontSize: '22px',
+    fontWeight: 'bold',
+    color: '#c9d1d9',
+  },
+  appSubtitle: {
+    fontSize: '13px',
+    color: '#8b949e',
+    marginTop: '4px',
+  },
+  sectionLabel: {
+    padding: '14px 16px 4px',
+  },
+  sectionTitle: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: '#8b949e',
+    letterSpacing: '0.8px',
+  },
+  card: {
+    padding: '12px 16px',
+    gap: '10px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  body: {
+    fontSize: '14px',
+    color: '#c9d1d9',
+    lineHeight: '1.5',
+  },
+  muted: {
+    fontSize: '12px',
+    color: '#8b949e',
+    lineHeight: '1.4',
+  },
+  label: {
+    fontSize: '13px',
+    color: '#8b949e',
+    marginBottom: '2px',
+  },
+  codeUrl: {
+    fontSize: '14px',
+    color: '#58a6ff',
+    fontWeight: 'bold',
+  },
+  codeBox: {
+    background: '#0d1117',
+    border: '1px solid #30363d',
+    borderRadius: '8px',
+    padding: '10px',
+    alignItems: 'center',
+  },
+  userCode: {
+    fontSize: '30px',
+    fontWeight: 'bold',
+    color: '#c9d1d9',
+    letterSpacing: '6px',
+    fontFamily: 'monospace',
+    textAlign: 'center',
+  },
+  successText: {
+    fontSize: '15px',
+    color: '#3fb950',
+    fontWeight: 'bold',
+  },
+  errorText: {
+    fontSize: '14px',
+    color: '#f85149',
+  },
+  repoTitle: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#58a6ff',
+  },
+  rowButtons: {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '8px',
+    marginTop: '4px',
+  },
+  primaryButton: {
+    fontSize: '14px',
+    background: '#238636',
+    color: 'white',
+    borderRadius: '6px',
+    padding: '8px 16px',
+    border: 'none',
+    flex: '1',
+  },
+  secondaryButton: {
+    fontSize: '14px',
+    background: '#21262d',
+    color: '#c9d1d9',
+    borderRadius: '6px',
+    padding: '8px 16px',
+    border: '1px solid #30363d',
+    flex: '1',
+  },
+  signOutRow: {
+    padding: '8px 16px 20px',
+  },
+  dangerButton: {
+    fontSize: '14px',
+    background: 'transparent',
+    color: '#f85149',
+    borderRadius: '6px',
+    padding: '8px 16px',
+    border: '1px solid #f8514940',
+    width: '100%',
+  },
+}
 
 AppSettingsPage({
   build(ctx) {
-    const authStateRaw = ctx.settingsStorage.getItem('auth_state')
-    const authState = authStateRaw ? JSON.parse(authStateRaw) : { state: 'unauthenticated' }
+    try {
+      return buildUI(ctx)
+    } catch (e) {
+      // Surface crash on screen so we can read it
+      return Section({ title: 'Error', description: String(e) }, [])
+    }
+  },
+})
 
-    const deviceCodeRaw = ctx.settingsStorage.getItem('device_code_info')
-    const deviceCode = deviceCodeRaw ? JSON.parse(deviceCodeRaw) : null
+function buildUI(ctx) {
+  const authStateRaw = ctx.settingsStorage.getItem('auth_state')
+  const authState = authStateRaw ? JSON.parse(authStateRaw) : { state: 'unauthenticated' }
 
-    const selectedRepoRaw = ctx.settingsStorage.getItem('selected_repo')
-    const selectedRepo = selectedRepoRaw ? JSON.parse(selectedRepoRaw) : null
+  const deviceCodeRaw = ctx.settingsStorage.getItem('device_code_info')
+  const deviceCode = deviceCodeRaw ? JSON.parse(deviceCodeRaw) : null
 
-    const isAuthenticated = authState.state === 'authenticated'
+  const selectedRepoRaw = ctx.settingsStorage.getItem('selected_repo')
+  const selectedRepo = selectedRepoRaw ? JSON.parse(selectedRepoRaw) : null
 
-    // Keep side service alive
-    ctx.settingsStorage.setItem('_heartbeat', Date.now().toString())
+  const isAuthenticated = authState.state === 'authenticated'
 
-    return Section({}, [
+  return Section({}, [
 
-      // ── Header ──────────────────────────────────────────────────────────────
-      View({ style: styles.header }, [
-        Text({ style: styles.appTitle }, '📒 Git Notes'),
-        Text({ style: styles.appSubtitle }, 'GitHub markdown notes on your wrist'),
+    // ── Header ──────────────────────────────────────────────────────────────
+    View({ style: styles.header }, [
+      Text({ style: styles.appTitle }, 'Git Notes'),
+      Text({ style: styles.appSubtitle }, 'GitHub markdown notes on your wrist'),
+    ]),
+
+    // ── GitHub Account ───────────────────────────────────────────────────────
+    Section({}, [
+      View({ style: styles.sectionLabel }, [
+        Text({ style: styles.sectionTitle }, 'GITHUB ACCOUNT'),
       ]),
+      buildAuthSection(authState, deviceCode, ctx),
+    ]),
 
-      // ── GitHub Account ───────────────────────────────────────────────────────
-      Section({}, [
-        View({ style: styles.sectionLabel }, [
-          Text({ style: styles.sectionTitle }, 'GITHUB ACCOUNT'),
-        ]),
-        buildAuthSection(authState, deviceCode, ctx),
-      ]),
-
-      // ── Repository (only when authenticated) ────────────────────────────────
+    // ── Repository / Filter / Sign out (only when authenticated) ────────────
+    ...([
       isAuthenticated ? Section({}, [
         View({ style: styles.sectionLabel }, [
           Text({ style: styles.sectionTitle }, 'NOTES REPOSITORY'),
@@ -40,7 +167,6 @@ AppSettingsPage({
         buildRepoSection(selectedRepo, ctx),
       ]) : null,
 
-      // ── File Filter (only when authenticated) ────────────────────────────────
       isAuthenticated ? Section({}, [
         View({ style: styles.sectionLabel }, [
           Text({ style: styles.sectionTitle }, 'FILE FILTER'),
@@ -48,7 +174,6 @@ AppSettingsPage({
         buildFilterSection(ctx),
       ]) : null,
 
-      // ── Sign out ─────────────────────────────────────────────────────────────
       isAuthenticated ? View({ style: styles.signOutRow }, [
         Button({
           label: 'Sign Out',
@@ -61,10 +186,10 @@ AppSettingsPage({
           },
         }),
       ]) : null,
+    ].filter(Boolean)),
 
-    ])
-  },
-})
+  ])
+}
 
 // ─── Auth section ────────────────────────────────────────────────────────────
 
@@ -152,25 +277,22 @@ function buildRepoSection(selectedRepo, ctx) {
   })()
 
   return View({ style: styles.card }, [
-    Text({ style: styles.label }, 'Repository Owner (username or org):'),
-    Input({
-      style: styles.input,
+    TextInput({
+      label: 'Repository Owner (username or org):',
       value: draft.owner || (selectedRepo ? selectedRepo.owner : ''),
       placeholder: 'octocat',
       onChange: (val) => saveDraft(ctx, { owner: val }),
     }),
 
-    Text({ style: styles.label }, 'Repository Name:'),
-    Input({
-      style: styles.input,
+    TextInput({
+      label: 'Repository Name:',
       value: draft.name || (selectedRepo ? selectedRepo.name : ''),
       placeholder: 'my-notes',
       onChange: (val) => saveDraft(ctx, { name: val }),
     }),
 
-    Text({ style: styles.label }, 'Branch (leave blank for main/master):'),
-    Input({
-      style: styles.input,
+    TextInput({
+      label: 'Branch (leave blank for main/master):',
       value: draft.branch || (selectedRepo ? selectedRepo.branch || '' : ''),
       placeholder: 'main',
       onChange: (val) => saveDraft(ctx, { branch: val }),
@@ -221,9 +343,8 @@ function buildFilterSection(ctx) {
   const current = raw || '.md,.markdown,.txt'
 
   return View({ style: styles.card }, [
-    Text({ style: styles.body }, 'File extensions to sync (comma-separated):'),
-    Input({
-      style: styles.input,
+    TextInput({
+      label: 'File extensions to sync (comma-separated):',
       value: current,
       placeholder: '.md,.markdown,.txt',
       onChange: (val) => {
@@ -237,130 +358,3 @@ function buildFilterSection(ctx) {
   ])
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = {
-  header: {
-    padding: '20px 16px 12px',
-    background: '#161b22',
-    borderBottom: '1px solid #30363d',
-  },
-  appTitle: {
-    fontSize: '22px',
-    fontWeight: 'bold',
-    color: '#c9d1d9',
-  },
-  appSubtitle: {
-    fontSize: '13px',
-    color: '#8b949e',
-    marginTop: '4px',
-  },
-  sectionLabel: {
-    padding: '14px 16px 4px',
-  },
-  sectionTitle: {
-    fontSize: '11px',
-    fontWeight: 'bold',
-    color: '#8b949e',
-    letterSpacing: '0.8px',
-  },
-  card: {
-    padding: '12px 16px',
-    gap: '10px',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  body: {
-    fontSize: '14px',
-    color: '#c9d1d9',
-    lineHeight: '1.5',
-  },
-  muted: {
-    fontSize: '12px',
-    color: '#8b949e',
-    lineHeight: '1.4',
-  },
-  label: {
-    fontSize: '13px',
-    color: '#8b949e',
-    marginBottom: '2px',
-  },
-  input: {
-    fontSize: '14px',
-    color: '#c9d1d9',
-    background: '#0d1117',
-    border: '1px solid #30363d',
-    borderRadius: '6px',
-    padding: '7px 10px',
-  },
-  codeUrl: {
-    fontSize: '14px',
-    color: '#58a6ff',
-    fontWeight: 'bold',
-  },
-  codeBox: {
-    background: '#0d1117',
-    border: '1px solid #30363d',
-    borderRadius: '8px',
-    padding: '10px',
-    alignItems: 'center',
-  },
-  userCode: {
-    fontSize: '30px',
-    fontWeight: 'bold',
-    color: '#c9d1d9',
-    letterSpacing: '6px',
-    fontFamily: 'monospace',
-    textAlign: 'center',
-  },
-  successText: {
-    fontSize: '15px',
-    color: '#3fb950',
-    fontWeight: 'bold',
-  },
-  errorText: {
-    fontSize: '14px',
-    color: '#f85149',
-  },
-  repoTitle: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    color: '#58a6ff',
-  },
-  rowButtons: {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: '8px',
-    marginTop: '4px',
-  },
-  primaryButton: {
-    fontSize: '14px',
-    background: '#238636',
-    color: 'white',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    border: 'none',
-    flex: '1',
-  },
-  secondaryButton: {
-    fontSize: '14px',
-    background: '#21262d',
-    color: '#c9d1d9',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    border: '1px solid #30363d',
-    flex: '1',
-  },
-  signOutRow: {
-    padding: '8px 16px 20px',
-  },
-  dangerButton: {
-    fontSize: '14px',
-    background: 'transparent',
-    color: '#f85149',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    border: '1px solid #f8514940',
-    width: '100%',
-  },
-}

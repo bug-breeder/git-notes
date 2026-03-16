@@ -17,7 +17,7 @@ A ZeppOS mini-app for Amazfit smartwatches that syncs your GitHub markdown notes
 
 ## Supported Devices
 
-Amazfit Balance, Balance 2, Active, Active 2, Active Edge, Bip 5, Bip 5 Unity, Bip 6, GTR Mini, GTR 3, GTR 3 Pro, GTR 4, GTR 4 LE, GTS 3, GTS 4, GTS 4 Mini, T-Rex 2, T-Rex 3, T-Rex 3 Pro, T-Rex Ultra, Cheetah, Cheetah Pro, Falcon, Mi Band 7
+Amazfit Balance, Balance 2, Active, Active 2, Active Edge, Bip 5, Bip 5 Unity, Bip 6, GTR Mini, GTR 3, GTR 3 Pro, GTR 4, GTR 4 LE, GTS 3, GTS 4, GTS 4 Mini, T-Rex 2, T-Rex 3, T-Rex 3 Pro, T-Rex Ultra, Cheetah, Cheetah Pro, Falcon
 
 ## Setup
 
