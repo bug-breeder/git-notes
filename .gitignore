@@ -13,6 +13,3 @@ selenium-debug.log
 *.ntvs*
 *.njsproj
 *.sln
-.zeus/
-*.zab
-*.zpk
